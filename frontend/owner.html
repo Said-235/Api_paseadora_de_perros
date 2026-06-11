@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawMatch — Buscar paseador</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    /* ── Results section ── */
+    #results-section { display: none; }
+
+    .results-header {
+      margin-bottom: 20px;
+    }
+    .results-header h2 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1.3rem;
+    }
+    .results-header p {
+      color: var(--muted2);
+      font-size: .82rem;
+      margin-top: 4px;
+    }
+
+    /* ── Walker result card ── */
+    .walker-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      margin-bottom: 14px;
+      display: flex;
+      gap: 18px;
+      align-items: flex-start;
+      transition: border-color .2s, transform .2s;
+      animation: slideIn .35s ease both;
+    }
+    .walker-card:hover {
+      border-color: rgba(76,175,130,.3);
+      transform: translateX(4px);
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-12px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .walker-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--green), var(--peach));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+
+    .walker-info { flex: 1; min-width: 0; }
+
+    .walker-name {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1.05rem;
+      margin-bottom: 4px;
+    }
+
+    .walker-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .meta-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: .72rem;
+      color: var(--muted2);
+      background: rgba(255,255,255,.04);
+      padding: 3px 9px;
+      border-radius: 99px;
+      border: 1px solid var(--border);
+    }
+
+    .walker-bio {
+      font-size: .82rem;
+      color: var(--muted2);
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+
+    .walker-caps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .cap-tag {
+      font-size: .68rem;
+      padding: 3px 9px;
+      border-radius: 99px;
+      font-weight: 500;
+    }
+    .cap-tag.yes  { background: rgba(76,175,130,.15);  color: var(--green); }
+    .cap-tag.info { background: rgba(247,197,159,.1);  color: var(--peach); }
+
+    .walker-score {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .score-badge {
+      background: linear-gradient(135deg, var(--green), #2d8c60);
+      color: var(--night);
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: .85rem;
+      padding: 6px 12px;
+      border-radius: 99px;
+    }
+
+    /* ── No results ── */
+    .no-results {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted2);
+    }
+    .no-results .icon { font-size: 3rem; margin-bottom: 12px; }
+    .no-results h3 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 8px;
+    }
+
+    /* ── Breed tag in header ── */
+    .breed-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .breed-custom-link {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: .8rem;
+      color: var(--green);
+      cursor: pointer;
+      text-decoration: none;
+      border: none;
+      background: none;
+      font-family: inherit;
+      padding: 0;
+    }
+    .breed-custom-link:hover { text-decoration: underline; }
+
+    #custom-breed-panel {
+      display: none;
+      margin-top: 14px;
+      padding: 18px;
+      border-radius: 12px;
+      border: 1px dashed rgba(76,175,130,.35);
+      background: rgba(76,175,130,.06);
+    }
+    #custom-breed-panel.open { display: block; }
+
+    .custom-breed-header {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: .92rem;
+      margin-bottom: 14px;
+      color: var(--sand);
+    }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1.5px solid rgba(76,175,130,.4);
+      background: transparent;
+      color: var(--green);
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: .9rem;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: background .2s;
+    }
+    .btn-secondary:hover { background: rgba(76,175,130,.1); }
+    .btn-secondary:disabled { opacity: .5; cursor: not-allowed; }
+
+    @media (max-width: 480px) {
+      .field-row { grid-template-columns: 1fr; }
+      .walker-card { flex-direction: column; }
+      .walker-score { flex-direction: row; align-items: center; }
+      .size-picker { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <a class="back-link" href="index.html">← Inicio</a>
+
+  <div class="page-header">
+    <span class="badge badge-green">🐶 Modo dueño</span>
+    <h1>Encuentra al paseador ideal para tu perro</h1>
+    <p>Cuéntanos sobre tu perro y encontraremos los paseadores que mejor se adapten a él.</p>
+  </div>
+
+  <!-- ── Formulario ─────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">🐾 Datos de tu perro</div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Nombre del perro</label>
+        <input type="text" id="dog-name" placeholder="ej. Max" />
+      </div>
+      <div class="field">
+        <label>Edad (años)</label>
+        <input type="number" id="dog-age" placeholder="ej. 3" min="0" max="25" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Raza</label>
+      <select id="breed-select">
+        <option value="">Cargando razas…</option>
+      </select>
+      <button type="button" class="breed-custom-link" id="toggle-custom-breed">
+        ¿No encuentras tu raza? Regístrala aquí
+      </button>
+
+      <div id="custom-breed-panel">
+        <div class="custom-breed-header">🐕 Registrar raza personalizada</div>
+
+        <div class="field">
+          <label>Nombre de la raza</label>
+          <input type="text" id="custom-breed-name" placeholder="ej. Mestizo, Cockapoo, perro de la calle…" />
+        </div>
+
+        <div class="field">
+          <label>Tamaño aproximado</label>
+          <div class="size-picker" id="custom-size-picker">
+            <button type="button" class="size-btn" data-val="small">🐩 Pequeño</button>
+            <button type="button" class="size-btn" data-val="medium">🐕 Mediano</button>
+            <button type="button" class="size-btn" data-val="large">🦮 Grande</button>
+            <button type="button" class="size-btn" data-val="giant">🐘 Gigante</button>
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom: 0;">
+          <label>Nivel de energía</label>
+          <div class="energy-picker" id="custom-energy-picker">
+            <button type="button" class="energy-btn" data-val="1">1<br>😴</button>
+            <button type="button" class="energy-btn" data-val="2">2<br>🚶</button>
+            <button type="button" class="energy-btn" data-val="3">3<br>🏃</button>
+            <button type="button" class="energy-btn" data-val="4">4<br>⚡</button>
+            <button type="button" class="energy-btn" data-val="5">5<br>🌪️</button>
+          </div>
+        </div>
+
+        <button type="button" class="btn-secondary" id="save-custom-breed-btn" onclick="saveCustomBreed()">
+          Guardar raza y usarla
+        </button>
+      </div>
+    </div>
+
+    <div id="breed-info" style="display:none; margin-bottom:18px;">
+      <div class="breed-summary" id="breed-chips"></div>
+    </div>
+
+    <div class="field">
+      <label>¿Condiciones especiales?</label>
+      <textarea id="special-needs" placeholder="ej. Alérgico al pasto, necesita correa especial, medicación diaria… (opcional)"></textarea>
+    </div>
+
+    <div style="padding: 4px 0;">
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">⚡ Perro hiperactivo</div>
+          <div class="toggle-sub">Necesita paseador con experiencia en alta energía</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="is-hyperactive" />
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-primary btn-green" id="search-btn" onclick="searchWalkers()">
+    Buscar paseadores compatibles 🔍
+  </button>
+
+  <!-- ── Loader ── -->
+  <div class="loader" id="loader">
+    <div class="spinner"></div>
+    Buscando el paseador ideal…
+  </div>
+
+  <!-- ── Resultados ── -->
+  <div id="results-section">
+    <div class="divider">resultados</div>
+    <div class="results-header">
+      <h2 id="results-title">Paseadores compatibles</h2>
+      <p id="results-sub"></p>
+    </div>
+    <div id="results-list"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  const API = '';
+  let customBreedSize = null;
+  let customBreedEnergy = null;
+
+  function addBreedOption(sel, breed) {
+    const opt = document.createElement('option');
+    opt.value = breed.id;
+    opt.textContent = breed.name;
+    opt.dataset.size = breed.size;
+    opt.dataset.energy = breed.energy_level;
+    sel.appendChild(opt);
+    return opt;
+  }
+
+  function showBreedInfo(size, energy) {
+    const info = document.getElementById('breed-info');
+    const chips = document.getElementById('breed-chips');
+    const sizeLabels = { small: 'Pequeño 🐩', medium: 'Mediano 🐕', large: 'Grande 🦮', giant: 'Gigante 🐘' };
+    const energyEmojis = ['', '😴', '🚶', '🏃', '⚡', '🌪️'];
+
+    chips.innerHTML = `
+      <span class="meta-chip">${sizeLabels[size] || size}</span>
+      <span class="meta-chip">Energía ${energy}/5 ${energyEmojis[energy] || ''}</span>
+    `;
+    info.style.display = 'block';
+  }
+
+  function toggleCustomBreedPanel(show) {
+    document.getElementById('custom-breed-panel').classList.toggle('open', show);
+    if (show) {
+      document.getElementById('breed-info').style.display = 'none';
+    }
+  }
+
+  // ── Carga razas al iniciar ────────────────────────────────────────────────
+  async function loadBreeds(selectedId = null) {
+    try {
+      const res = await fetch(`${API}/api/breeds`);
+      const breeds = await res.json();
+      const sel = document.getElementById('breed-select');
+      sel.innerHTML = '<option value="">Selecciona una raza</option>';
+      breeds.forEach(b => addBreedOption(sel, b));
+
+      const customOpt = document.createElement('option');
+      customOpt.value = '__custom__';
+      customOpt.textContent = '➕ Mi raza no está en la lista';
+      sel.appendChild(customOpt);
+
+      if (selectedId) {
+        sel.value = String(selectedId);
+        sel.dispatchEvent(new Event('change'));
+      }
+    } catch {
+      showToast('No se pudo conectar al servidor', 'error');
+    }
+  }
+
+  // ── Pickers de raza personalizada ─────────────────────────────────────────
+  document.getElementById('custom-size-picker').addEventListener('click', (e) => {
+    const btn = e.target.closest('.size-btn');
+    if (!btn) return;
+    customBreedSize = btn.dataset.val;
+    document.querySelectorAll('#custom-size-picker .size-btn').forEach(b => {
+      b.classList.toggle('active', b === btn);
+    });
+  });
+
+  document.getElementById('custom-energy-picker').addEventListener('click', (e) => {
+    const btn = e.target.closest('.energy-btn');
+    if (!btn) return;
+    customBreedEnergy = parseInt(btn.dataset.val, 10);
+    document.querySelectorAll('#custom-energy-picker .energy-btn').forEach(b => {
+      b.classList.toggle('active', b === btn);
+    });
+  });
+
+  document.getElementById('toggle-custom-breed').addEventListener('click', () => {
+    const sel = document.getElementById('breed-select');
+    sel.value = '__custom__';
+    toggleCustomBreedPanel(true);
+  });
+
+  // ── Guardar raza personalizada ────────────────────────────────────────────
+  async function saveCustomBreed() {
+    const name = document.getElementById('custom-breed-name').value.trim();
+    const btn = document.getElementById('save-custom-breed-btn');
+
+    if (!name) return showToast('Escribe el nombre de la raza', 'error');
+    if (!customBreedSize) return showToast('Selecciona el tamaño aproximado', 'error');
+    if (!customBreedEnergy) return showToast('Selecciona el nivel de energía', 'error');
+
+    btn.disabled = true;
+    try {
+      const res = await fetch(`${API}/api/breeds`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, size: customBreedSize, energy_level: customBreedEnergy })
+      });
+      const breed = await res.json();
+      if (!res.ok) throw new Error(breed.error);
+
+      const sel = document.getElementById('breed-select');
+      const customOpt = sel.querySelector('option[value="__custom__"]');
+      const opt = addBreedOption(sel, breed);
+      sel.insertBefore(opt, customOpt);
+      sel.value = String(breed.id);
+      toggleCustomBreedPanel(false);
+      showBreedInfo(breed.size, breed.energy_level);
+      showToast(`Raza "${breed.name}" registrada`, 'success');
+    } catch (err) {
+      showToast(err.message || 'No se pudo registrar la raza', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ── Mostrar info de raza seleccionada ─────────────────────────────────────
+  document.getElementById('breed-select').addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    const info = document.getElementById('breed-info');
+
+    if (opt.value === '__custom__') {
+      toggleCustomBreedPanel(true);
+      return;
+    }
+
+    toggleCustomBreedPanel(false);
+    if (!opt.value) { info.style.display = 'none'; return; }
+    showBreedInfo(opt.dataset.size, opt.dataset.energy);
+  });
+
+  // ── Buscar paseadores ────────────────────────────────────────────────────
+  async function searchWalkers() {
+    const name         = document.getElementById('dog-name').value.trim();
+    const age          = parseInt(document.getElementById('dog-age').value);
+    const breed_id     = parseInt(document.getElementById('breed-select').value);
+    const is_hyperactive = document.getElementById('is-hyperactive').checked;
+    const special_needs  = document.getElementById('special-needs').value.trim();
+
+    if (!name) return showToast('Escribe el nombre de tu perro', 'error');
+    if (document.getElementById('breed-select').value === '__custom__')
+      return showToast('Registra tu raza personalizada antes de buscar', 'error');
+    if (!breed_id) return showToast('Selecciona una raza', 'error');
+    if (isNaN(age) || age < 0) return showToast('Ingresa una edad válida', 'error');
+
+    setLoading(true);
+    document.getElementById('results-section').style.display = 'none';
+
+    try {
+      // Guardamos el perro y buscamos paseadores en paralelo
+      const [matchRes] = await Promise.all([
+        fetch(`${API}/api/match`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ breed_id, age, is_hyperactive, special_needs })
+        }),
+        fetch(`${API}/api/dogs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, breed_id, age, is_hyperactive, special_needs })
+        })
+      ]);
+
+      const data = await matchRes.json();
+      if (!matchRes.ok) throw new Error(data.error);
+
+      renderResults(data, name);
+    } catch (err) {
+      showToast(err.message || 'Error al buscar', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── Renderizar resultados ─────────────────────────────────────────────────
+  function renderResults({ breed, walkers }, dogName) {
+    const section = document.getElementById('results-section');
+    const list    = document.getElementById('results-list');
+    const title   = document.getElementById('results-title');
+    const sub     = document.getElementById('results-sub');
+
+    title.textContent = `${walkers.length} paseador${walkers.length !== 1 ? 'es' : ''} para ${dogName}`;
+    sub.textContent   = `Raza: ${breed.name} · Energía ${breed.energy_level}/5 · Tamaño ${breed.size}`;
+
+    if (walkers.length === 0) {
+      list.innerHTML = `
+        <div class="no-results">
+          <div class="icon">😔</div>
+          <h3>Sin paseadores disponibles</h3>
+          <p>Por ahora no hay paseadores que cumplan todos los requisitos de ${dogName}.<br>
+          Intenta sin marcar condiciones especiales.</p>
+        </div>`;
+    } else {
+      list.innerHTML = '';
+      const sizeLabels = { small: 'Pequeños', medium: 'Medianos', large: 'Grandes', giant: 'Gigantes' };
+      walkers.forEach((w, i) => {
+        const card = document.createElement('div');
+        card.className = 'walker-card';
+        card.style.animationDelay = `${i * 80}ms`;
+
+        const initials = w.name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
+        const stars = renderStars(w.rating);
+        const rating = w.rating ? parseFloat(w.rating).toFixed(1) : '—';
+
+        card.innerHTML = `
+          <div class="walker-avatar">${initials}</div>
+          <div class="walker-info">
+            <div class="walker-name">${w.name}</div>
+            <div class="walker-meta">
+              <span class="meta-chip">⭐ ${rating} ${stars}</span>
+              <span class="meta-chip">🎓 ${w.experience_years} año${w.experience_years !== 1 ? 's' : ''} exp.</span>
+              <span class="meta-chip">🐕 Hasta ${w.max_dogs_per_walk} perro${w.max_dogs_per_walk !== 1 ? 's' : ''}</span>
+            </div>
+            ${w.bio ? `<div class="walker-bio">${w.bio}</div>` : ''}
+            <div class="walker-caps">
+              <span class="cap-tag info">Acepta hasta: ${sizeLabels[w.max_size] || w.max_size}</span>
+              <span class="cap-tag info">Energía máx. ${w.max_energy_level}/5</span>
+              ${w.handles_hyperactive ? '<span class="cap-tag yes">✓ Maneja hiperactivos</span>' : ''}
+              ${w.handles_special_needs ? '<span class="cap-tag yes">✓ Condiciones especiales</span>' : ''}
+            </div>
+          </div>
+          <div class="walker-score">
+            ${i === 0 ? '<span class="score-badge">🏆 Top</span>' : ''}
+          </div>
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    section.style.display = 'block';
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function renderStars(rating) {
+    if (!rating) return '';
+    const full  = Math.round(parseFloat(rating));
+    const empty = 5 - full;
+    return `<span class="stars">${'★'.repeat(full)}${'☆'.repeat(empty)}</span>`;
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function setLoading(on) {
+    document.getElementById('loader').classList.toggle('active', on);
+    document.getElementById('search-btn').disabled = on;
+  }
+
+  let toastTimer;
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  loadBreeds();
+</script>
+</body>
+</html>

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawMatch — Registrarse como paseador</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    /* ── Profile preview card ── */
+    .preview-card {
+      background: linear-gradient(135deg, rgba(76,175,130,.12), rgba(255,107,53,.08));
+      border: 1px solid rgba(76,175,130,.2);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+    .preview-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--orange), var(--peach));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.4rem;
+      color: var(--night);
+      flex-shrink: 0;
+      transition: all .3s;
+    }
+    .preview-text .name {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+    .preview-text .sub {
+      color: var(--muted2);
+      font-size: .8rem;
+      margin-top: 4px;
+    }
+
+    /* ── Capabilities visual grid ── */
+    .cap-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .cap-item {
+      background: rgba(255,255,255,.03);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      cursor: pointer;
+      transition: all .2s;
+      text-align: center;
+    }
+    .cap-item.selected {
+      border-color: var(--orange);
+      background: rgba(255,107,53,.1);
+    }
+    .cap-item .ci-icon { font-size: 1.6rem; margin-bottom: 6px; }
+    .cap-item .ci-label {
+      font-size: .78rem;
+      font-weight: 500;
+      color: var(--sand);
+    }
+    .cap-item .ci-sub {
+      font-size: .68rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* ── Energy slider visual ── */
+    .energy-track {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .energy-seg {
+      flex: 1;
+      height: 8px;
+      border-radius: 99px;
+      background: var(--border);
+      transition: background .2s;
+    }
+    .energy-seg.filled { background: var(--orange); }
+
+    /* ── Success screen ── */
+    #success-screen {
+      display: none;
+      text-align: center;
+      padding: 60px 24px;
+      animation: fadeIn .5s ease both;
+    }
+    .success-icon {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      display: block;
+      animation: popIn .6s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    @keyframes popIn {
+      from { transform: scale(0); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+    #success-screen h2 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.8rem;
+      margin-bottom: 10px;
+    }
+    #success-screen p {
+      color: var(--muted2);
+      line-height: 1.6;
+      max-width: 340px;
+      margin: 0 auto 28px;
+    }
+    .btn-secondary {
+      display: inline-block;
+      padding: 12px 28px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      color: var(--white);
+      text-decoration: none;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: .9rem;
+      transition: border-color .2s, background .2s;
+    }
+    .btn-secondary:hover { border-color: var(--orange); background: rgba(255,107,53,.1); }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .cap-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <a class="back-link" href="index.html">← Inicio</a>
+
+  <!-- ── Form section ─────────────────────────────────── -->
+  <div id="form-section">
+    <div class="page-header">
+      <span class="badge badge-orange">🦺 Modo paseador</span>
+      <h1>Regístrate como paseador</h1>
+      <p>Cuéntanos sobre ti y qué tipos de perros puedes manejar para conectarte con dueños.</p>
+    </div>
+
+    <!-- Preview dinámica -->
+    <div class="preview-card">
+      <div class="preview-avatar" id="prev-avatar">?</div>
+      <div class="preview-text">
+        <div class="name" id="prev-name">Tu nombre aquí</div>
+        <div class="sub" id="prev-sub">Completa el formulario para ver tu perfil</div>
+      </div>
+    </div>
+
+    <!-- Info personal -->
+    <div class="card">
+      <div class="card-title">👤 Información personal</div>
+
+      <div class="field">
+        <label>Nombre completo</label>
+        <input type="text" id="w-name" placeholder="ej. Laura García" oninput="updatePreview()" />
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+        <div class="field">
+          <label>Años de experiencia</label>
+          <input type="number" id="w-exp" placeholder="0" min="0" max="50" oninput="updatePreview()" />
+        </div>
+        <div class="field">
+          <label>Máx. perros por paseo</label>
+          <input type="number" id="w-maxdogs" placeholder="1" min="1" max="10" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Bio / Descripción</label>
+        <textarea id="w-bio" placeholder="Cuéntale a los dueños sobre tu experiencia, tu metodología, qué te hace especial…"></textarea>
+      </div>
+    </div>
+
+    <!-- Capacidades -->
+    <div class="card">
+      <div class="card-title">🐕 ¿Qué perros puedes pasear?</div>
+
+      <div class="field">
+        <label>Tamaño máximo que aceptas</label>
+        <div class="cap-grid" id="size-grid">
+          <div class="cap-item" data-val="small"  onclick="selectSize(this)">
+            <div class="ci-icon">🐩</div>
+            <div class="ci-label">Pequeños</div>
+            <div class="ci-sub">hasta ~10 kg</div>
+          </div>
+          <div class="cap-item" data-val="medium" onclick="selectSize(this)">
+            <div class="ci-icon">🐕</div>
+            <div class="ci-label">Medianos</div>
+            <div class="ci-sub">hasta ~25 kg</div>
+          </div>
+          <div class="cap-item" data-val="large" onclick="selectSize(this)">
+            <div class="ci-icon">🦮</div>
+            <div class="ci-label">Grandes</div>
+            <div class="ci-sub">hasta ~45 kg</div>
+          </div>
+          <div class="cap-item" data-val="giant" onclick="selectSize(this)">
+            <div class="ci-icon">🐘</div>
+            <div class="ci-label">Gigantes</div>
+            <div class="ci-sub">más de 45 kg</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Nivel de energía máximo que manejas</label>
+        <div class="energy-picker">
+          <button class="energy-btn" data-val="1" onclick="selectEnergy(this)">1<br>😴 Tranquilo</button>
+          <button class="energy-btn" data-val="2" onclick="selectEnergy(this)">2<br>🚶 Calmado</button>
+          <button class="energy-btn" data-val="3" onclick="selectEnergy(this)">3<br>🏃 Activo</button>
+          <button class="energy-btn" data-val="4" onclick="selectEnergy(this)">4<br>⚡ Muy activo</button>
+          <button class="energy-btn" data-val="5" onclick="selectEnergy(this)">5<br>🌪️ Extremo</button>
+        </div>
+        <div class="energy-track" id="energy-track">
+          <div class="energy-seg"></div>
+          <div class="energy-seg"></div>
+          <div class="energy-seg"></div>
+          <div class="energy-seg"></div>
+          <div class="energy-seg"></div>
+        </div>
+      </div>
+
+      <div class="field" style="padding-top: 4px;">
+        <label>Capacidades especiales</label>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">⚡ Perros hiperactivos</div>
+            <div class="toggle-sub">Tengo experiencia con perros de alta energía</div>
+          </div>
+          <label class="toggle toggle-orange">
+            <input type="checkbox" id="w-hyperactive" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">💊 Condiciones especiales</div>
+            <div class="toggle-sub">Puedo atender perros con necesidades médicas o de comportamiento</div>
+          </div>
+          <label class="toggle toggle-orange">
+            <input type="checkbox" id="w-special" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary btn-orange" id="register-btn" onclick="registerWalker()">
+      Registrarme como paseador 🦺
+    </button>
+
+    <div class="loader" id="loader">
+      <div class="spinner"></div>
+      Registrando tu perfil…
+    </div>
+  </div>
+
+  <!-- ── Success screen ─────────────────────────────────── -->
+  <div id="success-screen">
+    <span class="success-icon">🎉</span>
+    <h2>¡Ya eres paseador en PawMatch!</h2>
+    <p id="success-msg">Tu perfil ha sido registrado exitosamente. Los dueños ya pueden encontrarte al buscar paseadores.</p>
+    <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+      <a href="index.html" class="btn-secondary">← Volver al inicio</a>
+      <button class="btn-secondary" onclick="resetForm()" style="cursor:pointer; background:none; font-family:'Syne',sans-serif;">
+        + Registrar otro paseador
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  const API = '';
+  let selectedSize   = null;
+  let selectedEnergy = null;
+
+  // ── Preview en tiempo real ────────────────────────────────────────────────
+  function updatePreview() {
+    const name = document.getElementById('w-name').value.trim();
+    const exp  = document.getElementById('w-exp').value;
+
+    const av   = document.getElementById('prev-avatar');
+    const pn   = document.getElementById('prev-name');
+    const ps   = document.getElementById('prev-sub');
+
+    if (name) {
+      const initials = name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
+      av.textContent = initials;
+      pn.textContent = name;
+    } else {
+      av.textContent = '?';
+      pn.textContent = 'Tu nombre aquí';
+    }
+
+    ps.textContent = exp
+      ? `${exp} año${exp !== '1' ? 's' : ''} de experiencia`
+      : 'Completa el formulario para ver tu perfil';
+  }
+
+  // ── Selección de tamaño ───────────────────────────────────────────────────
+  function selectSize(el) {
+    document.querySelectorAll('#size-grid .cap-item').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedSize = el.dataset.val;
+  }
+
+  // ── Selección de energía ──────────────────────────────────────────────────
+  function selectEnergy(el) {
+    document.querySelectorAll('.energy-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    selectedEnergy = parseInt(el.dataset.val);
+
+    // Update track visualization
+    document.querySelectorAll('#energy-track .energy-seg').forEach((seg, i) => {
+      seg.classList.toggle('filled', i < selectedEnergy);
+    });
+  }
+
+  // ── Registro ──────────────────────────────────────────────────────────────
+  async function registerWalker() {
+    const name       = document.getElementById('w-name').value.trim();
+    const exp        = parseInt(document.getElementById('w-exp').value) || 0;
+    const bio        = document.getElementById('w-bio').value.trim();
+    const maxDogs    = parseInt(document.getElementById('w-maxdogs').value) || 1;
+    const hyperactive= document.getElementById('w-hyperactive').checked;
+    const special    = document.getElementById('w-special').checked;
+
+    if (!name)          return showToast('Ingresa tu nombre', 'error');
+    if (!selectedSize)  return showToast('Selecciona el tamaño máximo de perros', 'error');
+    if (!selectedEnergy) return showToast('Selecciona el nivel de energía máximo', 'error');
+
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${API}/api/walkers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          experience_years:    exp,
+          bio:                 bio || null,
+          max_dogs_per_walk:   maxDogs,
+          max_size:            selectedSize,
+          max_energy_level:    selectedEnergy,
+          handles_hyperactive: hyperactive,
+          handles_special_needs: special
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      document.getElementById('success-msg').textContent =
+        `${name}, tu perfil ha sido registrado. Los dueños ya pueden encontrarte al buscar paseadores para sus perros.`;
+
+      document.getElementById('form-section').style.display = 'none';
+      document.getElementById('success-screen').style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    } catch (err) {
+      showToast(err.message || 'Error al registrar', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── Reset ─────────────────────────────────────────────────────────────────
+  function resetForm() {
+    ['w-name','w-bio','w-exp','w-maxdogs'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('w-hyperactive').checked = false;
+    document.getElementById('w-special').checked = false;
+    selectedSize = selectedEnergy = null;
+    document.querySelectorAll('.cap-item, .energy-btn').forEach(el => el.classList.remove('selected','active'));
+    document.querySelectorAll('#energy-track .energy-seg').forEach(s => s.classList.remove('filled'));
+    updatePreview();
+    document.getElementById('success-screen').style.display = 'none';
+    document.getElementById('form-section').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function setLoading(on) {
+    document.getElementById('loader').classList.toggle('active', on);
+    document.getElementById('register-btn').disabled = on;
+  }
+
+  let toastTimer;
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+  }
+</script>
+</body>
+</html>

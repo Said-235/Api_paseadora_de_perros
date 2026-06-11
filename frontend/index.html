@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawMatch — Encuentra al paseador ideal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --night:    #0F0F1A;
+      --deep:     #1A1A2E;
+      --sand:     #E8D5B7;
+      --orange:   #FF6B35;
+      --green:    #4CAF82;
+      --peach:    #F7C59F;
+      --muted:    #6B6B8A;
+      --white:    #FAFAF8;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--night);
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+    }
+
+    /* ── Paw canvas background ── */
+    #paw-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.06;
+    }
+
+    /* ── Main layout ── */
+    .stage {
+      position: relative;
+      z-index: 1;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 48px;
+      padding: 32px;
+    }
+
+    /* ── Logo / headline ── */
+    .logo-block {
+      text-align: center;
+      animation: fadeDown .7s ease both;
+    }
+
+    .logo-icon {
+      font-size: 52px;
+      display: block;
+      margin-bottom: 8px;
+      animation: pawBounce 2s ease-in-out infinite;
+    }
+
+    .logo-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: clamp(2.4rem, 6vw, 4rem);
+      color: var(--white);
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+
+    .logo-title span {
+      color: var(--orange);
+    }
+
+    .logo-sub {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: .95rem;
+      letter-spacing: .04em;
+      font-weight: 300;
+    }
+
+    /* ── Role cards ── */
+    .cards {
+      display: flex;
+      gap: 20px;
+      animation: fadeUp .8s .25s ease both;
+    }
+
+    .role-card {
+      position: relative;
+      width: 220px;
+      padding: 36px 24px 28px;
+      border-radius: 20px;
+      cursor: pointer;
+      text-align: center;
+      border: 1.5px solid rgba(255,255,255,.07);
+      background: rgba(255,255,255,.03);
+      backdrop-filter: blur(12px);
+      transition: transform .25s ease, border-color .25s ease, background .25s ease;
+      overflow: hidden;
+    }
+
+    .role-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity .3s ease;
+      border-radius: 20px;
+    }
+
+    .role-card.owner::before  { background: radial-gradient(circle at 50% 0%, rgba(76,175,130,.18), transparent 70%); }
+    .role-card.walker::before { background: radial-gradient(circle at 50% 0%, rgba(255,107,53,.18), transparent 70%); }
+
+    .role-card:hover { transform: translateY(-6px); }
+    .role-card:hover::before { opacity: 1; }
+    .role-card.owner:hover  { border-color: var(--green); }
+    .role-card.walker:hover { border-color: var(--orange); }
+
+    .card-emoji {
+      font-size: 44px;
+      display: block;
+      margin-bottom: 14px;
+    }
+
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1.2rem;
+      color: var(--white);
+      margin-bottom: 8px;
+    }
+
+    .card-desc {
+      font-size: .8rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .card-cta {
+      display: inline-block;
+      margin-top: 18px;
+      padding: 9px 22px;
+      border-radius: 999px;
+      font-size: .78rem;
+      font-weight: 500;
+      letter-spacing: .03em;
+      transition: background .2s, color .2s;
+    }
+
+    .owner .card-cta  { background: rgba(76,175,130,.15);  color: var(--green); }
+    .walker .card-cta { background: rgba(255,107,53,.15);  color: var(--orange); }
+    .role-card:hover .card-cta { background: var(--green); color: var(--night); }
+    .role-card.walker:hover .card-cta { background: var(--orange); color: var(--night); }
+
+    /* ── Footer note ── */
+    .foot {
+      font-size: .72rem;
+      color: var(--muted);
+      animation: fadeUp .8s .45s ease both;
+      opacity: 0;
+      animation-fill-mode: both;
+    }
+
+    /* ── Keyframes ── */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pawBounce {
+      0%, 100% { transform: translateY(0) rotate(-5deg); }
+      50%       { transform: translateY(-8px) rotate(5deg); }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 500px) {
+      .cards { flex-direction: column; align-items: center; }
+      .role-card { width: 100%; max-width: 300px; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="paw-canvas"></canvas>
+
+<div class="stage">
+  <div class="logo-block">
+    <span class="logo-icon">🐾</span>
+    <h1 class="logo-title">Paw<span>Match</span></h1>
+    <p class="logo-sub">Conectamos perros con sus paseadores ideales</p>
+  </div>
+
+  <div class="cards">
+    <div class="role-card owner" onclick="go('owner.html')">
+      <span class="card-emoji">🐶</span>
+      <div class="card-title">Soy dueño</div>
+      <p class="card-desc">Registra a tu perro y encuentra al paseador perfecto para él</p>
+      <span class="card-cta">Buscar paseador →</span>
+    </div>
+
+    <div class="role-card walker" onclick="go('walker.html')">
+      <span class="card-emoji">🦺</span>
+      <div class="card-title">Soy paseador</div>
+      <p class="card-desc">Regístrate y conecta con dueños que necesitan tu ayuda</p>
+      <span class="card-cta">Registrarme →</span>
+    </div>
+  </div>
+
+  <p class="foot">v1.0 · Modo básico + Modo experto</p>
+</div>
+
+<script>
+  function go(page) {
+    document.body.style.transition = 'opacity .35s ease';
+    document.body.style.opacity = '0';
+    setTimeout(() => window.location.href = page, 340);
+  }
+
+  // ── Animated paw prints on canvas ──────────────────────────────────────────
+  const canvas = document.getElementById('paw-canvas');
+  const ctx    = canvas.getContext('2d');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  function drawPaw(x, y, size, angle) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.fillStyle = '#ffffff';
+
+    // Palm pad
+    ctx.beginPath();
+    ctx.ellipse(0, size * .3, size * .55, size * .45, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Toe pads
+    const toes = [[-size*.55, -size*.1], [-size*.2, -size*.6], [size*.2, -size*.6], [size*.55, -size*.1]];
+    toes.forEach(([tx, ty]) => {
+      ctx.beginPath();
+      ctx.ellipse(tx, ty, size * .22, size * .22, 0, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+
+  // Generate paw trail
+  const paws = [];
+  for (let i = 0; i < 28; i++) {
+    const side = (i % 2 === 0) ? -18 : 18;
+    const prog = i / 27;
+    paws.push({
+      x: canvas.width * (.15 + prog * .7) + side,
+      y: canvas.height * (.2 + Math.sin(prog * Math.PI * 2.5) * .3),
+      size: 18 + Math.random() * 8,
+      angle: Math.atan2(side, 60) + (Math.random() - .5) * .3,
+      alpha: 0,
+      delay: i * 180
+    });
+  }
+
+  let startTime = null;
+
+  function animate(ts) {
+    if (!startTime) startTime = ts;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    paws.forEach(p => {
+      const elapsed = ts - startTime - p.delay;
+      if (elapsed < 0) return;
+      const fade = Math.min(1, elapsed / 400);
+      ctx.globalAlpha = fade * .9;
+      drawPaw(p.x, p.y, p.size, p.angle);
+    });
+
+    requestAnimationFrame(animate);
+  }
+
+  requestAnimationFrame(animate);
+  window.addEventListener('resize', () => {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    startTime = null;
+  });
+</script>
+</body>
+</html>

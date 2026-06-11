@@ -1,0 +1,25 @@
+# Dependencias
+node_modules/
+backend/node_modules/
+
+# Variables de entorno (secretos)
+.env
+backend/.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editores / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

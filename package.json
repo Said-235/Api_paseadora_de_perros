@@ -1,0 +1,10 @@
+{
+  "name": "pawmatch",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dog walker matching system",
+  "scripts": {
+    "start": "npm start --prefix backend",
+    "dev": "npm run dev --prefix backend"
+  }
+}
