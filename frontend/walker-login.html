@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawMatch — Inicio de sesión paseador</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .login-card { max-width: 400px; margin: 0 auto; }
+    .login-icon {
+      font-size: 3rem;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .login-hint {
+      text-align: center;
+      font-size: .82rem;
+      color: var(--muted2);
+      margin-top: 20px;
+    }
+    .login-hint a { color: var(--orange); text-decoration: none; }
+    .login-hint a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <a class="back-link" href="index.html">← Inicio</a>
+
+  <div class="page-header" style="text-align:center;">
+    <span class="badge badge-orange">🦺 Paseador</span>
+    <h1>Iniciar sesión</h1>
+    <p>Ingresa el nombre con el que te registraste para ver tu calendario de citas.</p>
+  </div>
+
+  <div class="card login-card">
+    <div class="login-icon">📅</div>
+    <div class="field">
+      <label>Tu nombre completo</label>
+      <input type="text" id="login-name" placeholder="ej. Laura García" autofocus
+             onkeydown="if(event.key==='Enter') login()" />
+    </div>
+    <button class="btn-primary btn-orange" id="login-btn" onclick="login()">
+      Entrar a mi calendario
+    </button>
+    <div class="loader" id="loader">
+      <div class="spinner"></div>
+      Buscando tu perfil…
+    </div>
+  </div>
+
+  <p class="login-hint">
+    ¿Aún no estás registrado?
+    <a href="walker.html">Regístrate como paseador →</a>
+  </p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const API = '';
+
+  async function login() {
+    const name = document.getElementById('login-name').value.trim();
+    if (!name) return showToast('Escribe tu nombre', 'error');
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/api/walkers/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      sessionStorage.setItem('pawmatch_walker', JSON.stringify(data));
+      window.location.href = 'walker-dashboard.html';
+    } catch (err) {
+      showToast(err.message || 'Error al iniciar sesión', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function setLoading(on) {
+    document.getElementById('loader').classList.toggle('active', on);
+    document.getElementById('login-btn').disabled = on;
+  }
+
+  let toastTimer;
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+  }
+</script>
+</body>
+</html>

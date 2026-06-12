@@ -327,6 +327,38 @@
   </div>
 </div>
 
+<!-- Modal agendar cita -->
+<div class="modal-overlay" id="booking-modal">
+  <div class="modal">
+    <div class="modal-title">📅 Agendar cita</div>
+    <div class="modal-sub">Con <strong id="modal-walker-name"></strong></div>
+
+    <div class="field">
+      <label>Tu nombre (opcional)</label>
+      <input type="text" id="owner-name-input" placeholder="ej. Carlos Ruiz" />
+    </div>
+
+    <div class="field">
+      <label>Fecha</label>
+      <input type="date" id="appt-date" onchange="loadSlots()" />
+    </div>
+
+    <div class="field" style="margin-bottom:0;">
+      <label>Hora disponible</label>
+      <div class="slot-grid" id="slot-grid">
+        <p class="slots-empty">Selecciona una fecha</p>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" onclick="closeBooking()">Cancelar</button>
+      <button type="button" class="btn-primary btn-green" id="confirm-book-btn" onclick="confirmBooking()">
+        Confirmar cita
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -334,6 +366,9 @@
   const API = '';
   let customBreedSize = null;
   let customBreedEnergy = null;
+  let lastDogContext = null;
+  let bookingWalker = null;
+  let selectedSlot = null;
 
   function addBreedOption(sel, breed) {
     const opt = document.createElement('option');
@@ -480,23 +515,16 @@
     document.getElementById('results-section').style.display = 'none';
 
     try {
-      // Guardamos el perro y buscamos paseadores en paralelo
-      const [matchRes] = await Promise.all([
-        fetch(`${API}/api/match`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ breed_id, age, is_hyperactive, special_needs })
-        }),
-        fetch(`${API}/api/dogs`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, breed_id, age, is_hyperactive, special_needs })
-        })
-      ]);
+      const matchRes = await fetch(`${API}/api/match`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ breed_id, age, is_hyperactive, special_needs })
+      });
 
       const data = await matchRes.json();
       if (!matchRes.ok) throw new Error(data.error);
 
+      lastDogContext = { name, breed_id, age, is_hyperactive, special_needs };
       renderResults(data, name);
     } catch (err) {
       showToast(err.message || 'Error al buscar', 'error');
@@ -551,11 +579,13 @@
               ${w.handles_hyperactive ? '<span class="cap-tag yes">✓ Maneja hiperactivos</span>' : ''}
               ${w.handles_special_needs ? '<span class="cap-tag yes">✓ Condiciones especiales</span>' : ''}
             </div>
+            <button type="button" class="btn-book">📅 Agendar cita</button>
           </div>
           <div class="walker-score">
             ${i === 0 ? '<span class="score-badge">🏆 Top</span>' : ''}
           </div>
         `;
+        card.querySelector('.btn-book').onclick = () => openBooking(w);
         list.appendChild(card);
       });
     }
@@ -563,6 +593,103 @@
     section.style.display = 'block';
     section.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+
+  // ── Agendar cita ──────────────────────────────────────────────────────────
+  function openBooking(walker) {
+    if (!lastDogContext) return showToast('Busca paseadores primero', 'error');
+    bookingWalker = walker;
+    selectedSlot = null;
+    document.getElementById('modal-walker-name').textContent = walker.name;
+    document.getElementById('owner-name-input').value = '';
+    const dateInput = document.getElementById('appt-date');
+    dateInput.min = new Date().toISOString().slice(0, 10);
+    dateInput.value = '';
+    document.getElementById('slot-grid').innerHTML = '<p class="slots-empty">Selecciona una fecha</p>';
+    document.getElementById('booking-modal').classList.add('open');
+  }
+
+  function closeBooking() {
+    document.getElementById('booking-modal').classList.remove('open');
+    bookingWalker = null;
+    selectedSlot = null;
+  }
+
+  async function loadSlots() {
+    const date = document.getElementById('appt-date').value;
+    const grid = document.getElementById('slot-grid');
+    selectedSlot = null;
+    if (!date || !bookingWalker) return;
+
+    grid.innerHTML = '<p class="slots-empty">Cargando horarios…</p>';
+    try {
+      const res = await fetch(`${API}/api/walkers/${bookingWalker.id}/availability?date=${date}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      if (!data.slots || data.slots.length === 0) {
+        grid.innerHTML = `<p class="slots-empty">${data.reason || 'Sin horarios disponibles ese día'}</p>`;
+        return;
+      }
+
+      grid.innerHTML = '';
+      data.slots.forEach(slot => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'slot-btn';
+        btn.textContent = slot;
+        btn.onclick = () => {
+          selectedSlot = slot;
+          grid.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        };
+        grid.appendChild(btn);
+      });
+    } catch (err) {
+      grid.innerHTML = `<p class="slots-empty">${err.message}</p>`;
+    }
+  }
+
+  async function confirmBooking() {
+    const date = document.getElementById('appt-date').value;
+    const ownerName = document.getElementById('owner-name-input').value.trim();
+    const btn = document.getElementById('confirm-book-btn');
+
+    if (!date) return showToast('Selecciona una fecha', 'error');
+    if (!selectedSlot) return showToast('Selecciona una hora', 'error');
+
+    const time = selectedSlot;
+    btn.disabled = true;
+    try {
+      const res = await fetch(`${API}/api/appointments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walker_id: bookingWalker.id,
+          dog_name: lastDogContext.name,
+          breed_id: lastDogContext.breed_id,
+          dog_age: lastDogContext.age,
+          is_hyperactive: lastDogContext.is_hyperactive,
+          special_needs: lastDogContext.special_needs,
+          owner_name: ownerName || null,
+          appointment_date: date,
+          appointment_time: time
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      closeBooking();
+      showToast(`Cita agendada el ${date} a las ${time} ✅`, 'success');
+    } catch (err) {
+      showToast(err.message || 'No se pudo agendar', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  document.getElementById('booking-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'booking-modal') closeBooking();
+  });
 
   function renderStars(rating) {
     if (!rating) return '';

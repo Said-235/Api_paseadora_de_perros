@@ -146,6 +146,9 @@
 
 <div class="page">
   <a class="back-link" href="index.html">← Inicio</a>
+  <p style="text-align:right; margin:-20px 0 20px;">
+    <a href="walker-login.html" style="color:var(--orange);font-size:.82rem;text-decoration:none;">¿Ya registrado? Inicia sesión →</a>
+  </p>
 
   <!-- ── Form section ─────────────────────────────────── -->
   <div id="form-section">
@@ -187,6 +190,38 @@
       <div class="field">
         <label>Bio / Descripción</label>
         <textarea id="w-bio" placeholder="Cuéntale a los dueños sobre tu experiencia, tu metodología, qué te hace especial…"></textarea>
+      </div>
+    </div>
+
+    <!-- Horario de trabajo -->
+    <div class="card">
+      <div class="card-title">🕐 Horario de trabajo</div>
+      <p style="color:var(--muted2);font-size:.82rem;margin:-10px 0 18px;line-height:1.5;">
+        Los dueños solo podrán agendar citas dentro de este horario.
+      </p>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+        <div class="field">
+          <label>Hora de inicio</label>
+          <input type="time" id="w-start" value="09:00" />
+        </div>
+        <div class="field">
+          <label>Hora de fin</label>
+          <input type="time" id="w-end" value="18:00" />
+        </div>
+      </div>
+
+      <div class="field" style="margin-bottom:0;">
+        <label>Días que trabajas</label>
+        <div class="days-picker" id="days-picker">
+          <button type="button" class="day-btn active" data-val="1" onclick="toggleDay(this)">Lun</button>
+          <button type="button" class="day-btn active" data-val="2" onclick="toggleDay(this)">Mar</button>
+          <button type="button" class="day-btn active" data-val="3" onclick="toggleDay(this)">Mié</button>
+          <button type="button" class="day-btn active" data-val="4" onclick="toggleDay(this)">Jue</button>
+          <button type="button" class="day-btn active" data-val="5" onclick="toggleDay(this)">Vie</button>
+          <button type="button" class="day-btn" data-val="6" onclick="toggleDay(this)">Sáb</button>
+          <button type="button" class="day-btn" data-val="7" onclick="toggleDay(this)">Dom</button>
+        </div>
       </div>
     </div>
 
@@ -279,6 +314,7 @@
     <h2>¡Ya eres paseador en PawMatch!</h2>
     <p id="success-msg">Tu perfil ha sido registrado exitosamente. Los dueños ya pueden encontrarte al buscar paseadores.</p>
     <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+      <a href="walker-login.html" class="btn-secondary">📅 Ver mi calendario</a>
       <a href="index.html" class="btn-secondary">← Volver al inicio</a>
       <button class="btn-secondary" onclick="resetForm()" style="cursor:pointer; background:none; font-family:'Syne',sans-serif;">
         + Registrar otro paseador
@@ -294,6 +330,18 @@
   const API = '';
   let selectedSize   = null;
   let selectedEnergy = null;
+  let selectedDays   = [1, 2, 3, 4, 5];
+
+  function toggleDay(el) {
+    const day = parseInt(el.dataset.val, 10);
+    if (selectedDays.includes(day)) {
+      selectedDays = selectedDays.filter(d => d !== day);
+      el.classList.remove('active');
+    } else {
+      selectedDays.push(day);
+      el.classList.add('active');
+    }
+  }
 
   // ── Preview en tiempo real ────────────────────────────────────────────────
   function updatePreview() {
@@ -350,6 +398,12 @@
     if (!selectedSize)  return showToast('Selecciona el tamaño máximo de perros', 'error');
     if (!selectedEnergy) return showToast('Selecciona el nivel de energía máximo', 'error');
 
+    const workStart = document.getElementById('w-start').value;
+    const workEnd   = document.getElementById('w-end').value;
+    if (!workStart || !workEnd) return showToast('Indica tu horario de trabajo', 'error');
+    if (workStart >= workEnd) return showToast('La hora de inicio debe ser anterior a la de fin', 'error');
+    if (selectedDays.length === 0) return showToast('Selecciona al menos un día de trabajo', 'error');
+
     setLoading(true);
 
     try {
@@ -364,7 +418,10 @@
           max_size:            selectedSize,
           max_energy_level:    selectedEnergy,
           handles_hyperactive: hyperactive,
-          handles_special_needs: special
+          handles_special_needs: special,
+          work_start_time:     workStart,
+          work_end_time:       workEnd,
+          work_days:           selectedDays.sort((a, b) => a - b)
         })
       });
 
@@ -388,10 +445,16 @@
   // ── Reset ─────────────────────────────────────────────────────────────────
   function resetForm() {
     ['w-name','w-bio','w-exp','w-maxdogs'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('w-start').value = '09:00';
+    document.getElementById('w-end').value = '18:00';
     document.getElementById('w-hyperactive').checked = false;
     document.getElementById('w-special').checked = false;
     selectedSize = selectedEnergy = null;
+    selectedDays = [1, 2, 3, 4, 5];
     document.querySelectorAll('.cap-item, .energy-btn').forEach(el => el.classList.remove('selected','active'));
+    document.querySelectorAll('.day-btn').forEach(el => {
+      el.classList.toggle('active', selectedDays.includes(parseInt(el.dataset.val, 10)));
+    });
     document.querySelectorAll('#energy-track .energy-seg').forEach(s => s.classList.remove('filled'));
     updatePreview();
     document.getElementById('success-screen').style.display = 'none';

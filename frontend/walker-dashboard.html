@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawMatch — Mi calendario</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+
+<div class="page">
+  <a class="back-link" href="index.html">← Inicio</a>
+
+  <div class="dashboard-top">
+    <div>
+      <span class="badge badge-orange">📅 Mi agenda</span>
+      <div class="walker-greeting" id="greeting">Hola, paseador</div>
+      <div class="work-hours-badge" id="work-hours"></div>
+    </div>
+    <button class="btn-logout" onclick="logout()">Cerrar sesión</button>
+  </div>
+
+  <div class="card">
+    <div class="cal-header">
+      <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
+      <h2 id="cal-title">—</h2>
+      <button class="cal-nav" onclick="changeMonth(1)">›</button>
+    </div>
+
+    <div class="cal-grid" id="cal-dow"></div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+
+  <div class="appt-list">
+    <h3 id="day-title">Citas del día</h3>
+    <div id="day-appts">
+      <p style="color:var(--muted2);font-size:.85rem;">Selecciona un día en el calendario</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const API = '';
+  const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const DOW = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+
+  let walker = null;
+  let viewYear, viewMonth;
+  let appointments = [];
+  let selectedDate = null;
+
+  function init() {
+    const raw = sessionStorage.getItem('pawmatch_walker');
+    if (!raw) {
+      window.location.href = 'walker-login.html';
+      return;
+    }
+    walker = JSON.parse(raw);
+    document.getElementById('greeting').textContent = `Hola, ${walker.name}`;
+    const start = String(walker.work_start_time || '09:00').slice(0, 5);
+    const end = String(walker.work_end_time || '18:00').slice(0, 5);
+    document.getElementById('work-hours').textContent = `Horario: ${start} – ${end}`;
+
+    const now = new Date();
+    viewYear = now.getFullYear();
+    viewMonth = now.getMonth() + 1;
+    selectedDate = formatDate(now);
+    loadAppointments();
+  }
+
+  function logout() {
+    sessionStorage.removeItem('pawmatch_walker');
+    window.location.href = 'walker-login.html';
+  }
+
+  function formatDate(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  function changeMonth(delta) {
+    viewMonth += delta;
+    if (viewMonth > 12) { viewMonth = 1; viewYear++; }
+    if (viewMonth < 1) { viewMonth = 12; viewYear--; }
+    loadAppointments();
+  }
+
+  async function loadAppointments() {
+    try {
+      const res = await fetch(`${API}/api/walkers/${walker.id}/appointments?year=${viewYear}&month=${viewMonth}`);
+      appointments = await res.json();
+      if (!res.ok) throw new Error(appointments.error);
+      renderCalendar();
+      renderDayAppointments(selectedDate);
+    } catch (err) {
+      showToast(err.message || 'Error al cargar citas', 'error');
+    }
+  }
+
+  function apptsOnDate(dateStr) {
+    return appointments.filter(a => {
+      const d = String(a.appointment_date).slice(0, 10);
+      return d === dateStr;
+    });
+  }
+
+  function renderCalendar() {
+    document.getElementById('cal-title').textContent = `${MONTHS[viewMonth - 1]} ${viewYear}`;
+
+    const dowEl = document.getElementById('cal-dow');
+    dowEl.innerHTML = DOW.map(d => `<div class="cal-dow">${d}</div>`).join('');
+
+    const first = new Date(viewYear, viewMonth - 1, 1);
+    let startDow = first.getDay();
+    startDow = startDow === 0 ? 6 : startDow - 1;
+
+    const daysInMonth = new Date(viewYear, viewMonth, 0).getDate();
+    const todayStr = formatDate(new Date());
+
+    const grid = document.getElementById('cal-grid');
+    grid.innerHTML = '';
+
+    for (let i = 0; i < startDow; i++) {
+      grid.innerHTML += `<div class="cal-day other-month"></div>`;
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${viewYear}-${String(viewMonth).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const dayAppts = apptsOnDate(dateStr);
+      const isToday = dateStr === todayStr;
+      const isSelected = dateStr === selectedDate;
+
+      const el = document.createElement('div');
+      el.className = 'cal-day'
+        + (isToday ? ' today' : '')
+        + (dayAppts.length ? ' has-appt' : '')
+        + (isSelected ? ' selected' : '');
+      el.innerHTML = `${day}${dayAppts.length ? '<span class="dot"></span>' : ''}`;
+      el.onclick = () => {
+        selectedDate = dateStr;
+        renderCalendar();
+        renderDayAppointments(dateStr);
+      };
+      grid.appendChild(el);
+    }
+  }
+
+  function renderDayAppointments(dateStr) {
+    const parts = dateStr.split('-');
+    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    const label = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+    document.getElementById('day-title').textContent = `Citas — ${label}`;
+
+    const dayAppts = apptsOnDate(dateStr);
+    const container = document.getElementById('day-appts');
+
+    if (dayAppts.length === 0) {
+      container.innerHTML = '<p style="color:var(--muted2);font-size:.85rem;">Sin citas este día 🐾</p>';
+      return;
+    }
+
+    container.innerHTML = dayAppts.map(a => {
+      const time = String(a.appointment_time).slice(0, 5);
+      const breed = a.breed_name ? ` · ${a.breed_name}` : '';
+      const owner = a.owner_name ? ` · Dueño: ${a.owner_name}` : '';
+      return `
+        <div class="appt-item">
+          <div class="appt-time">${time}</div>
+          <div>
+            <div class="appt-dog">🐕 ${a.dog_name}${breed}</div>
+            <div class="appt-meta">
+              ${a.dog_age != null ? `${a.dog_age} año${a.dog_age !== 1 ? 's' : ''}` : ''}
+              ${a.is_hyperactive ? ' · ⚡ Hiperactivo' : ''}
+              ${owner}
+              ${a.special_needs ? ` · ${a.special_needs}` : ''}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  let toastTimer;
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+  }
+
+  init();
+</script>
+</body>
+</html>
